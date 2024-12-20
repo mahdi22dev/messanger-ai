@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const { handleGetRequest } = require("./controllers/getWebhook.js");
+const { handleGetRequest } = require("./controllers/getWebHook.js");
 const { handlePostRequest } = require("./controllers/postWebHook.js");
 
 const app = express();
