@@ -1,8 +1,8 @@
 require("dotenv").config();
 const express = require("express");
 const bodyParser = require("body-parser");
-const { handleGetRequest } = require("./controllers/getWebhook");
-const { handlePostRequest } = require("./controllers/postWebHook");
+const { handleGetRequest } = require("./controllers/getWebhook.js");
+const { handlePostRequest } = require("./controllers/postWebHook.js");
 
 const app = express();
 const PORT = process.env.PORT || 3044;
