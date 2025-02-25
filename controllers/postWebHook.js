@@ -1,6 +1,7 @@
 const { default: axios } = require("axios");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { HfInference } = require("@huggingface/inference");
+const { Together } = require("together-ai");
 require("dotenv").config();
 
 const handlePostRequest = (req, res) => {
@@ -55,7 +56,7 @@ const sendMessage = async (recipientId, messageText) => {
   }
 };
 
-const createAIModel = (type, apiKey, hf) => {
+const createAIModel = (type, apiKey, hf, tg) => {
   if (type === "deepseek") {
     console.log("using deepseek");
     return {
@@ -90,7 +91,27 @@ const createAIModel = (type, apiKey, hf) => {
 
         const chatSession = model.startChat({ generationConfig, history: [] });
         const result = await chatSession.sendMessage(prompt);
-        return result.response.text();
+        return result;
+      },
+    };
+  }
+
+  if (type === "together") {
+    console.log("using together");
+    return {
+      chat: async (prompt) => {
+        const together = new Together({ apiKey: tg });
+        const response = await together.chat.completions.create({
+          messages: [
+            {
+              role: "user",
+              content: "name 10 cute cats?",
+            },
+          ],
+          model: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
+        });
+        console.log(response.choices[0].message.content);
+        return response;
       },
     };
   }
@@ -100,10 +121,11 @@ const createAIModel = (type, apiKey, hf) => {
 
 async function sendPromt(senderId, prompt) {
   try {
-    const modelType = "gemini"; // "deepseek" or "gemini"
+    const modelType = "together"; // "deepseek" or "gemini","together"
     const apiKey = process.env.GEMINI_API_KEY;
     const hf = process.env.HF;
-    const aiModel = createAIModel(modelType, apiKey, hf);
+    const tg = process.env.TG;
+    const aiModel = createAIModel(modelType, apiKey, hf, tg);
 
     const response = await aiModel.chat(prompt);
 
@@ -113,8 +135,13 @@ async function sendPromt(senderId, prompt) {
     }
 
     if (modelType == "gemini") {
-      console.log(result.response.text());
-      sendMessage(senderId, result.response.text());
+      console.log(response.response.text());
+      sendMessage(senderId, response.response.text());
+    }
+
+    if (modelType == "together") {
+      console.log(response.choices[0].message.content);
+      sendMessage(senderId, response.choices[0].message.content);
     }
   } catch (error) {
     console.log(error);
