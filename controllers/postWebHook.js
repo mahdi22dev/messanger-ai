@@ -105,7 +105,7 @@ const createAIModel = (type, apiKey, hf, tg) => {
           messages: [
             {
               role: "user",
-              content: "name 10 cute cats?",
+              content: prompt,
             },
           ],
           model: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
