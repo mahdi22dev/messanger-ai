@@ -100,7 +100,7 @@ const createAIModel = (type, apiKey, hf) => {
 
 async function sendPromt(senderId, prompt) {
   try {
-    const modelType = "deepseek"; // "deepseek" or "gemini"
+    const modelType = "gemini"; // "deepseek" or "gemini"
     const apiKey = process.env.GEMINI_API_KEY;
     const hf = process.env.HF;
     const aiModel = createAIModel(modelType, apiKey, hf);
@@ -109,11 +109,11 @@ async function sendPromt(senderId, prompt) {
 
     if (modelType == "deepseek") {
       console.log(response.choices[0].message);
-      sendMessage(senderId, result.response.text());
+      sendMessage(senderId, response.choices[0].message);
     }
 
     if (modelType == "gemini") {
-      console.log(response.choices[0].message);
+      console.log(result.response.text());
       sendMessage(senderId, result.response.text());
     }
   } catch (error) {
