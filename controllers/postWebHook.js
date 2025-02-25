@@ -98,38 +98,30 @@ const createAIModel = (type, apiKey, hf) => {
   throw new Error("Invalid AI model type");
 };
 
-// // Example usage
-// (async () => {
-//   const modelType = "gemini"; // or "deepseek"
-//   const apiKey = process.env.GEMINI_API_KEY;
-//   const hf = process.env.HF;
-
-//   const aiModel = createAIModel(modelType, apiKey, hf);
-//   const response = await aiModel.chat(
-//     "Write a job application related to electricity."
-//   );
-//   console.log(response);
-// })();
-
 async function sendPromt(senderId, prompt) {
   try {
     const modelType = "deepseek"; // "deepseek" or "gemini"
     const apiKey = process.env.GEMINI_API_KEY;
     const hf = process.env.HF;
-
     const aiModel = createAIModel(modelType, apiKey, hf);
-    const response = await aiModel.chat("name 10 cute cat names.");
+
+    const response = await aiModel.chat(prompt);
+
     if (modelType == "deepseek") {
       console.log(response.choices[0].message);
+      sendMessage(senderId, result.response.text());
     }
-    // sendMessage(senderId, result.response.text());
+
+    if (modelType == "gemini") {
+      console.log(response.choices[0].message);
+      sendMessage(senderId, result.response.text());
+    }
   } catch (error) {
     console.log(error);
     sendMessage(senderId, "Something went wrong");
   }
 }
 
-sendPromt();
 module.exports = {
   handlePostRequest: handlePostRequest,
 };
