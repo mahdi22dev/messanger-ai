@@ -1,5 +1,7 @@
 const { default: axios } = require("axios");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { HfInference } = require("@huggingface/inference");
+require("dotenv").config();
 
 const handlePostRequest = (req, res) => {
   const body = req.body;
@@ -53,36 +55,81 @@ const sendMessage = async (recipientId, messageText) => {
   }
 };
 
+const createAIModel = (type, apiKey, hf) => {
+  if (type === "deepseek") {
+    console.log("using deepseek");
+    return {
+      chat: async (prompt) => {
+        console.log("using this prompt,", prompt);
+        const client = new HfInference(hf);
+        return await client.chatCompletion({
+          model: "deepseek-ai/DeepSeek-V3",
+          messages: [{ role: "user", content: prompt }],
+          provider: "together",
+          max_tokens: 500,
+        });
+      },
+    };
+  }
+
+  if (type === "gemini") {
+    console.log("using gemini");
+
+    return {
+      chat: async (prompt) => {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const generationConfig = {
+          temperature: 1,
+          topP: 0.95,
+          topK: 40,
+          maxOutputTokens: 8192,
+          responseMimeType: "text/plain",
+        };
+
+        const chatSession = model.startChat({ generationConfig, history: [] });
+        const result = await chatSession.sendMessage(prompt);
+        return result.response.text();
+      },
+    };
+  }
+
+  throw new Error("Invalid AI model type");
+};
+
+// // Example usage
+// (async () => {
+//   const modelType = "gemini"; // or "deepseek"
+//   const apiKey = process.env.GEMINI_API_KEY;
+//   const hf = process.env.HF;
+
+//   const aiModel = createAIModel(modelType, apiKey, hf);
+//   const response = await aiModel.chat(
+//     "Write a job application related to electricity."
+//   );
+//   console.log(response);
+// })();
+
 async function sendPromt(senderId, prompt) {
   try {
+    const modelType = "deepseek"; // "deepseek" or "gemini"
     const apiKey = process.env.GEMINI_API_KEY;
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-    });
+    const hf = process.env.HF;
 
-    const generationConfig = {
-      temperature: 1,
-      topP: 0.95,
-      topK: 40,
-      maxOutputTokens: 8192,
-      responseMimeType: "text/plain",
-    };
-
-    const chatSession = model.startChat({
-      generationConfig,
-      history: [],
-    });
-
-    const result = await chatSession.sendMessage(prompt);
-    result.response.text();
-    sendMessage(senderId, result.response.text());
+    const aiModel = createAIModel(modelType, apiKey, hf);
+    const response = await aiModel.chat("name 10 cute cat names.");
+    if (modelType == "deepseek") {
+      console.log(response.choices[0].message);
+    }
+    // sendMessage(senderId, result.response.text());
   } catch (error) {
     console.log(error);
     sendMessage(senderId, "Something went wrong");
   }
 }
 
+sendPromt();
 module.exports = {
   handlePostRequest: handlePostRequest,
 };
