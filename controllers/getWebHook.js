@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const handleGetRequest = (req, res) => {
+  console.log("verification request");
   try {
     // Parse the query params
     let mode = req.query["hub.mode"];
