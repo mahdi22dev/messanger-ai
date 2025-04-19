@@ -5,7 +5,7 @@ const config = {
   mongoUri: process.env.MONGODB_URL,
   dbName: "chatbot_db",
   collectionName: "user_contexts",
-  poolSize: 40,
+  poolSize: 50,
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -31,10 +31,8 @@ async function getMongoClient() {
       connectTimeoutMS: 5000, // Timeout for connection attempts
       socketTimeoutMS: 30000, // Timeout for socket operations
     });
-
     await client.connect();
     isConnected = true;
-    console.log("Successfully connected to MongoDB with connection pooling");
     return client;
   } catch (error) {
     console.error("Failed to connect to MongoDB:", error);
@@ -55,7 +53,6 @@ async function insertUserContext(userContext) {
     };
 
     const result = await collection.insertOne(document);
-    console.log(`Inserted User Context with ID: ${result.insertedId}`);
     return result;
   } catch (error) {
     console.error("Error inserting user context:", error);
@@ -69,14 +66,11 @@ async function insertUserContext(userContext) {
     client = await getMongoClient();
     const db = client.db(config.dbName);
     const collection = db.collection(config.collectionName);
-
     const document = {
       ...userContext,
       createdAt: new Date(),
     };
-
     const result = await collection.insertOne(document);
-    console.log(`Inserted User Context with ID: ${result.insertedId}`);
     return result;
   } catch (error) {
     console.error("Error inserting user context:", error);
@@ -90,12 +84,7 @@ async function deleteUserContextsById(senderId) {
     client = await getMongoClient();
     const db = client.db(config.dbName);
     const collection = db.collection(config.collectionName);
-
     const result = await collection.deleteMany({ senderId: senderId });
-
-    console.log(
-      `Deleted ${result.deletedCount} documents for userId: ${senderId}`
-    );
     return result;
   } catch (error) {
     console.error("Error deleting user contexts:", error);
@@ -120,34 +109,35 @@ async function getConversationHistory(senderId, limit = 10) {
   }
 }
 
-async function getModelType() {
+async function getModelType(senderId) {
   let client;
   try {
     client = await getMongoClient();
     const db = client.db(config.dbName);
     const collection = db.collection("config");
-    const model = await collection.findOne({ id: "model" });
-    return model; // Return in chronological order
+    const model = await collection.findOne({ senderId: senderId });
+    console.log(model);
+    return model || "deepseek"; // Return in chronological order
   } catch (error) {
     console.error("Error Find ModelType:");
     throw error;
   }
 }
-async function updateModelType(model) {
+async function updateModelType(model, senderId) {
   let client;
   try {
     client = await getMongoClient();
     const db = client.db(config.dbName);
     const collection = db.collection("config");
     const result = await collection.findOneAndUpdate(
-      { id: "model" },
+      { senderId: senderId },
       { $set: { modelType: model, updatedAt: new Date() } },
       {
         returnDocument: "after",
         upsert: true,
       }
     );
-
+    console.log("result:", result);
     return result;
   } catch (error) {
     console.error("Error Find ModelType:");
@@ -213,13 +203,13 @@ async function ensureTTLIndex() {
   await collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 }
 
-async function closeConnection() {
-  if (client && isConnected) {
-    await client.close();
-    isConnected = false;
-    console.log("MongoDB connection closed");
-  }
-}
+// async function closeConnection() {
+//   if (client && isConnected) {
+//     await client.close();
+//     isConnected = false;
+//     console.log("MongoDB connection closed");
+//   }
+// }
 
 module.exports = {
   insertUserContext,

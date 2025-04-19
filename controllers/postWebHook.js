@@ -7,7 +7,6 @@ const {
   deleteUserContextsById,
   getConversationHistory,
   getModelType,
-  ensureTTLIndex,
   setPendingState,
   checkPendingState,
   updateModelType,
@@ -16,29 +15,52 @@ const {
 
 require("dotenv").config();
 
-const commands = ["reset", "change model", "cancel"];
+const commands = ["reset", "change model", "cancel", "help"];
 const moderlsList = ["deepseek", "gemini", "together"];
+
+function getHelpMessage() {
+  return `🤖 *AI Chat Bot Help* 🤖
+
+🔹 *Basic Usage*:
+- Just type your message to chat with the AI
+- Send an image with a prompt to analyze images
+
+🛠 *Commands*:
+• *help* - Show this help message
+• *reset* - Clear your conversation history
+• *change model* - Switch between AI models (Together, DeepSeek, Gemini)
+• *cancel* - Cancel any pending action
+
+🖼 *Image Processing*:
+1. Send an image attachment
+2. The bot will ask for your prompt
+3. Reply with your question about the image
+
+🧠 *Available AI Models*:
+- *Together*: Powerful general-purpose AI
+- *DeepSeek*: Specialized for technical topics
+- *Gemini*: Google's advanced AI model
+
+📝 *Notes*:
+- The bot remembers your conversation history
+- You can change models anytime
+- Image analysis works with all models
+
+Type any command to get started or just ask a question!`;
+}
 
 const handlePostRequest = async (req, res) => {
   const body = req.body;
-  // run start up functions, cleaners etc
-  // try {
-  //   await ensureTTLIndex();
-  // } catch (error) {
-  //   console.log(error);
-  // }
   if (body.object === "page") {
-    console.log("request recevied");
     body.entry.forEach(async (entry) => {
       const event = entry.messaging[0];
       const senderId = event.sender.id;
+
       if (event.message && event.message.text) {
         const text = event.message.text.toLowerCase();
         const matched = commands.some((command) => text.includes(command));
         const stateExists = await checkPendingState(senderId);
-
         if (text == "cancel") {
-          console.log("Command detected :", text);
           await clearPendingState(senderId);
           sendMessage(senderId, "Your canceled pending changes.");
           return;
@@ -46,7 +68,7 @@ const handlePostRequest = async (req, res) => {
 
         if (stateExists && stateExists.pending_action.type == "change") {
           if (moderlsList.some((model) => text.includes(model))) {
-            await updateModelType(text);
+            await updateModelType(text, senderId);
             await clearPendingState(senderId);
             sendMessage(senderId, `${stateExists.successMessage} *${text}*!`);
             return;
@@ -71,18 +93,21 @@ const handlePostRequest = async (req, res) => {
 
         if (matched) {
           if (text == "reset") {
-            console.log("Command detected :", text);
             await deleteUserContextsById(senderId);
             sendMessage(senderId, "Your chat context has been removed.");
             return;
           }
           if (text == "change model") {
-            console.log("Command detected :", text);
             await setPendingState(senderId, "change", {});
             sendMessage(
               senderId,
               "Model you want to change to? type one from this Models list: Together, DeepSeek, Gemini."
             );
+            return;
+          }
+          if (text == "help") {
+            console.log("Command detected :", text);
+            sendMessage(senderId, getHelpMessage());
             return;
           }
         }
@@ -239,7 +264,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
 
 async function sendPromt(senderId, prompt, image) {
   try {
-    const model = await getModelType();
+    const model = await getModelType(senderId);
     const modelType = model.modelType || "deepseek"; // "deepseek" or "gemini","together"
     const apiKey = process.env.GEMINI_API_KEY;
     const hf = process.env.HF;
@@ -284,6 +309,11 @@ async function sendPromt(senderId, prompt, image) {
       response: aiResponse,
       type: "text",
     });
+
+    // add user config if it doesn't exists
+    if (model.modelType == null) {
+      await updateModelType("deepseek", senderId);
+    }
   } catch (error) {
     console.log(error);
     sendMessage(senderId, "Something went wrong");
