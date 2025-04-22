@@ -30,6 +30,7 @@ function getHelpMessage() {
 • *reset* - Clear your conversation history
 • *change model* - Switch between AI models (Together, DeepSeek, Gemini)
 • *cancel* - Cancel any pending action
+• *current model* - Returns the current model 
 
 🖼 *Image Processing*:
 1. Send an image attachment
@@ -60,6 +61,7 @@ const handlePostRequest = async (req, res) => {
         const text = event.message.text.toLowerCase();
         const matched = commands.some((command) => text.includes(command));
         const stateExists = await checkPendingState(senderId);
+
         if (text == "cancel") {
           await clearPendingState(senderId);
           sendMessage(senderId, "Your canceled pending changes.");
@@ -67,7 +69,7 @@ const handlePostRequest = async (req, res) => {
         }
 
         if (stateExists && stateExists.pending_action.type == "change") {
-          if (moderlsList.some((model) => text.includes(model))) {
+          if (moderlsList.some((model) => text == model)) {
             await updateModelType(text, senderId);
             await clearPendingState(senderId);
             sendMessage(senderId, `${stateExists.successMessage} *${text}*!`);
@@ -166,8 +168,6 @@ const sendMessage = async (recipientId, messageText) => {
 
 const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
   if (type === "gemini") {
-    console.log("using gemini");
-
     return {
       chat: async (prompt) => {
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -189,7 +189,6 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
   }
 
   if (type === "deepseek") {
-    console.log("using deepseek");
     return {
       chat: async (prompt) => {
         const together = new Together({ apiKey: tg });
@@ -205,6 +204,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
         const response = await together.chat.completions.create({
           messages: [
             ...messages,
+
             {
               role: "user",
               content: prompt,
@@ -265,7 +265,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
 async function sendPromt(senderId, prompt, image) {
   try {
     const model = await getModelType(senderId);
-    const modelType = model.modelType || "deepseek"; // "deepseek" or "gemini","together"
+    const modelType = model.modelType || "deepseek"; // default to deepseek
     const apiKey = process.env.GEMINI_API_KEY;
     const hf = process.env.HF;
     const tg = process.env.TG;

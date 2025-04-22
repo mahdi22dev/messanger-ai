@@ -23,6 +23,9 @@ dependencies:
   express:
     specifier: ^4.21.2
     version: 4.21.2
+  marked:
+    specifier: ^15.0.9
+    version: 15.0.9
   mongodb:
     specifier: ^6.15.0
     version: 6.15.0
@@ -622,6 +625,12 @@ packages:
       bindings: 1.2.1
     dev: false
     optional: true
+
+  /marked@15.0.9:
+    resolution: {integrity: sha512-9AW/bn9DxQeZVjR52l5jsc0W2pwuhP04QaQewPvylil12Cfr2GBfWmgp6mu8i9Jy8UlBjqDZ9uMTDuJ8QOGZJA==}
+    engines: {node: '>= 18'}
+    hasBin: true
+    dev: false
 
   /math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
