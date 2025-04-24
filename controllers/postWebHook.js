@@ -193,7 +193,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
       chat: async (prompt) => {
         const together = new Together({ apiKey: tg });
         // only works with together models and deepseek
-        const history = await getConversationHistory("8791587274222599");
+        const history = await getConversationHistory(senderId);
         const messages = history
           .map((item) => [
             { role: "user", content: item.prompt },
