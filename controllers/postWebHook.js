@@ -1,5 +1,5 @@
 const { default: axios } = require("axios");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GoogleGenAI } = require("@google/genai");
 const { HfInference } = require("@huggingface/inference");
 const { Together } = require("together-ai");
 const {
@@ -170,20 +170,51 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
   if (type === "gemini") {
     return {
       chat: async (prompt) => {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-        const generationConfig = {
-          temperature: 1,
-          topP: 0.95,
-          topK: 40,
-          maxOutputTokens: 8192,
+        const genAI = new GoogleGenAI({ apiKey: apiKey });
+        const config = {
           responseMimeType: "text/plain",
+          systemInstruction: [
+            {
+              text: `You are a helpful and friendly chatbot assistant designed for Facebook Messenger.\\n\\nMessenger does not support Markdown or HTML formatting. Therefore:\\n\\nDo not use bold **text**, italics _text_, headings #, or code blocks \`code\`.\\n\\nAll responses must be in plain text only.\\n\\nFor lists, use simple characters like:\\n\\n*, -, or numbers (1., 2.) for item markers.\\n\\nBe concise, conversational, and easy to understand.\\n\\nIf presenting steps or options, make them clearly visible using line breaks and list markers.\\n\\nEmojis are okay ✅ and can be used to add tone or clarity,\\n\\nHere’s what you can do:\\n* Check your account status\\n* View recent activity\\n* Contact support\\n\\nAlways adapt your tone to be helpful, polite, and human-friendly — just like you're chatting with a friend via Messenger.`,
+            },
+          ],
         };
+        const model = "gemini-2.0-flash";
+        const history = await getConversationHistory(senderId);
 
-        const chatSession = model.startChat({ generationConfig, history: [] });
-        const result = await chatSession.sendMessage(prompt);
-        return result;
+        const messages = history
+          .map((item) => [
+            {
+              role: "user",
+              parts: [{ text: item.prompt }],
+            },
+            {
+              role: "model",
+              parts: [{ text: item.response }],
+            },
+          ])
+          .flat();
+
+        const contents = [
+          ...messages,
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ];
+
+        const response = await genAI.models.generateContentStream({
+          model,
+          config,
+          contents,
+        });
+
+        let fullResponse = "";
+        for await (const chunk of response) {
+          fullResponse += chunk.text;
+        }
+
+        return { response: { text: () => fullResponse } };
       },
     };
   }
@@ -194,6 +225,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
         const together = new Together({ apiKey: tg });
         // only works with together models and deepseek
         const history = await getConversationHistory(senderId);
+
         const messages = history
           .map((item) => [
             { role: "user", content: item.prompt },
@@ -232,6 +264,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
             { role: "assistant", content: item.response },
           ])
           .flat();
+
         const messages = [
           ...OldMessages,
           {
