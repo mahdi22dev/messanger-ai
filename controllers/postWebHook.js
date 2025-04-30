@@ -30,6 +30,11 @@ function getHelpMessage() {
 • *change model* - Switch between AI models (Together, DeepSeek, Gemini)
 • *cancel* - Cancel any pending action
 • *current model* - Returns the current model 
+• *search this [query]* - Get top 10 web results with summaries
+  
+🔍 *New Search Commands*:
+• *search this [query]* - Get top 10 web results with summaries
+  Example: "search this best AI tools 2024"
 
 🖼 *Image Processing*:
 1. Send an image attachment
@@ -243,6 +248,11 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
             {
               role: "user",
               content: prompt,
+            },
+            {
+              role: "system",
+              content:
+                "You are a helpful and friendly chatbot assistant designed for Facebook Messenger.\n\nMessenger does not support Markdown or HTML formatting. Therefore:\n\nDo not use bold **text**, italics _text_, headings #, or code blocks `code`.\n\nAll responses must be in plain text only.\n\nFor lists, use simple characters like:\n\n*, -, or numbers (1., 2.) for item markers.\n\nBe concise, conversational, and easy to understand.\n\nIf presenting steps or options, make them clearly visible using line breaks and list markers.\n\nEmojis are okay ✅ and can be used to add tone or clarity,\n\nHere’s what you can do:\n* Check your account status\n* View recent activity\n* Contact support\n\nAlways adapt your tone to be helpful, polite, and human-friendly — just like you're chatting with a friend via Messenger.",
             },
           ],
           model: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
