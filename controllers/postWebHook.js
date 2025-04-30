@@ -30,7 +30,7 @@ function getHelpMessage() {
 • *change model* - Switch between AI models (Together, DeepSeek, Gemini)
 • *cancel* - Cancel any pending action
 • *current model* - Returns the current model 
-• *search this [query]* - Get top 10 web results with summaries
+• *search this [query]* - Get top 10 web results
   
 🔍 *New Search Commands*:
 • *search this [query]* - Get top 10 web results with summaries
@@ -53,6 +53,14 @@ function getHelpMessage() {
 
 Type any command to get started or just ask a question!`;
 }
+const formatForMessenger = (text) => {
+  return text
+    .replace(/[*_`~#>]+/g, "") // Remove Markdown characters
+    .replace(/\n{3,}/g, "\n\n") // Normalize extra line breaks
+    .replace(/(\d+)\.\s*/g, "$1. ") // Ensure numbered lists are clean
+    .replace(/^\s*[-*]\s*/gm, "* ") // Normalize bullet points
+    .trim();
+};
 
 const handlePostRequest = async (req, res) => {
   const body = req.body;
@@ -146,13 +154,13 @@ const sendMessage = async (recipientId, messageText) => {
   // const AI_Response = await sendPromt(generationConfig, model, messageText);
   const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
   const url = `https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
-
+  const response = formatForMessenger(messageText);
   // Split the response into chunks, each up to 2000 characters
   const chunkSize = 2000;
   const chunks = [];
   // Ensure the chunking respects the 2000 character limit
-  for (let i = 0; i < messageText.length; i += chunkSize) {
-    chunks.push(messageText.substring(i, i + chunkSize));
+  for (let i = 0; i < response.length; i += chunkSize) {
+    chunks.push(response.substring(i, i + chunkSize));
   }
   for (const chunk of chunks) {
     const messageData = {
@@ -180,9 +188,6 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
           systemInstruction: [
             {
               text: `You are a helpful and friendly chatbot assistant designed for Facebook Messenger.\\n\\nMessenger does not support Markdown or HTML formatting. Therefore:\\n\\nDo not use bold **text**, italics _text_, headings #, or code blocks \`code\`.\\n\\nAll responses must be in plain text only.\\n\\nFor lists, use simple characters like:\\n\\n*, -, or numbers (1., 2.) for item markers.\\n\\nBe concise, conversational, and easy to understand.\\n\\nIf presenting steps or options, make them clearly visible using line breaks and list markers.\\n\\nEmojis are okay ✅ and can be used to add tone or clarity,\\n\\nHere’s what you can do:\\n* Check your account status\\n* View recent activity\\n* Contact support\\n\\nAlways adapt your tone to be helpful, polite, and human-friendly — just like you're chatting with a friend via Messenger.`,
-            },
-            {
-              text: `When users ask about URLs, provide detailed descriptions of the content instead of links.`,
             },
           ],
           tools: [{ googleSearch: {} }],
@@ -252,7 +257,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
             {
               role: "system",
               content:
-                "You are a helpful and friendly chatbot assistant designed for Facebook Messenger.\n\nMessenger does not support Markdown or HTML formatting. Therefore:\n\nDo not use bold **text**, italics _text_, headings #, or code blocks `code`.\n\nAll responses must be in plain text only.\n\nFor lists, use simple characters like:\n\n*, -, or numbers (1., 2.) for item markers.\n\nBe concise, conversational, and easy to understand.\n\nIf presenting steps or options, make them clearly visible using line breaks and list markers.\n\nEmojis are okay ✅ and can be used to add tone or clarity,\n\nHere’s what you can do:\n* Check your account status\n* View recent activity\n* Contact support\n\nAlways adapt your tone to be helpful, polite, and human-friendly — just like you're chatting with a friend via Messenger.",
+                "You are a helpful and friendly chatbot assistant designed for Facebook Messenger.\n\nMessenger does not support Markdown or HTML formatting. Therefore:\n\nDo not use bold **text** or *text*, italics _text_, headings #, or code blocks `code`.\n\nAll responses must be in plain text only.\n\nFor lists, use simple characters like:\n\n*, -, or numbers (1., 2.) for item markers.\n\nBe concise, conversational, and easy to understand.\n\nIf presenting steps or options, make them clearly visible using line breaks and list markers.\n\nEmojis are okay ✅ and can be used to add tone or clarity,\n\nHere’s what you can do:\n* Check your account status\n* View recent activity\n* Contact support\n\nAlways adapt your tone to be helpful, polite, and human-friendly — just like you're chatting with a friend via Messenger.",
             },
           ],
           model: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free",
