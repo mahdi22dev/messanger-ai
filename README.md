@@ -93,6 +93,3 @@ Follow these steps to set up the chatbot on your local environment:
 - You can change models anytime.
 - Image analysis works with all models.
 
----
-
-Type any command to get started or just ask a question!
