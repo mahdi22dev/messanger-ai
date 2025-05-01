@@ -60,33 +60,39 @@ Follow these steps to set up the chatbot on your local environment:
 
 ---
 
-## Usage
+## 🤖 *AI Chat Bot Help* 🤖
 
-The Messenger AI chatbot is designed to enhance user engagement on Facebook Messenger by providing:
+### 🔹 *Basic Usage*:
+- Just type your message to chat with the AI.
+- Send an image with a prompt to analyze images.
 
-- **24/7 Customer Support**  
-- **Product Recommendations**  
-- **Interactive Conversations**  
-- **Automated Replies**  
+### 🛠 *Commands*:
+- **help** - Show this help message.
+- **reset** - Clear your conversation history.
+- **change model** - Switch between AI models (Together, DeepSeek, Gemini).
+- **cancel** - Cancel any pending action.
+- **current model** - Returns the current model.
+- **search this [query]** - Get top 10 web results.
 
-Simply integrate the chatbot with your Facebook page, and it will handle user queries intelligently.
+### 🔍 *New Search Commands*:
+- **search this [query]** - Get top 10 web results with summaries.  
+  Example: "search this best AI tools 2024".
+
+### 🖼 *Image Processing*:
+1. Send an image attachment.
+2. The bot will ask for your prompt.
+3. Reply with your question about the image.
+
+### 🧠 *Available AI Models*:
+- **Together**: Powerful general-purpose AI.
+- **DeepSeek**: Specialized for technical topics.
+- **Gemini**: Google's advanced AI model.
+
+### 📝 *Notes*:
+- The bot remembers your conversation history.
+- You can change models anytime.
+- Image analysis works with all models.
 
 ---
 
-## Contributing
-
-We welcome contributions from the community. Please follow these steps:
-
-1. Fork the repository.
-2. Create a feature branch.
-3. Submit a pull request with a clear description.
-
----
-
-## License
-
-This project is open-source and available under the [MIT License](LICENSE).
-
----
-
-For further assistance or inquiries, please contact [mahdi22dev](https://github.com/mahdi22dev).
+Type any command to get started or just ask a question!
