@@ -60,24 +60,6 @@ async function insertUserContext(userContext) {
   }
 }
 
-async function insertUserContext(userContext) {
-  let client;
-  try {
-    client = await getMongoClient();
-    const db = client.db(config.dbName);
-    const collection = db.collection(config.collectionName);
-    const document = {
-      ...userContext,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(document);
-    return result;
-  } catch (error) {
-    console.error("Error inserting user context:", error);
-    throw error;
-  }
-}
-
 async function deleteUserContextsById(senderId) {
   let client;
   try {
@@ -116,7 +98,6 @@ async function getModelType(senderId) {
     const db = client.db(config.dbName);
     const collection = db.collection("config");
     const model = await collection.findOne({ senderId: senderId });
-    console.log(model);
     return model || "deepseek"; // Return in chronological order
   } catch (error) {
     console.error("Error Find ModelType:");
