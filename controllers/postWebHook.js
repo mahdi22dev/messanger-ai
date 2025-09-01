@@ -79,8 +79,9 @@ const handlePostRequest = async (req, res) => {
         const stateExists = await checkPendingState(senderId);
 
         if (text == "cancel") {
-          await clearPendingState(senderId);
           sendMessage(senderId, "Your canceled pending changes.");
+          await clearPendingState(senderId);
+
           return;
         }
 
@@ -111,17 +112,18 @@ const handlePostRequest = async (req, res) => {
 
         if (matched) {
           if (text == "reset") {
+            sendMessage(senderId, "Your chat context has been removed.");
             await deleteUserContextsById(senderId);
             await clearPendingState(senderId);
-            sendMessage(senderId, "Your chat context has been removed.");
             return;
           }
           if (text == "change model") {
-            await setPendingState(senderId, "change", {});
             sendMessage(
               senderId,
               "Model you want to change to? type one from this Models list: Together, DeepSeek, Gemini."
             );
+            await setPendingState(senderId, "change", {});
+
             return;
           }
           if (text == "help") {
@@ -138,6 +140,7 @@ const handlePostRequest = async (req, res) => {
             await setPendingState(senderId, "image", {
               imageUrl: attachment.payload.url,
             });
+            // saving image in db
             await insertUserContext({
               senderId,
               image: attachment.payload.url,
@@ -240,19 +243,29 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
           // delete files from the folder
         }
         const history = await getConversationHistory(senderId);
-        console.log("history : ", history);
+        // console.log("history : ", history);
 
         const messages = history
           .map((item) => {
-            if (item.type === "image" && item.image) {
-              // If the item is an image, use createPartFromUri for the image part
+            if (item.image && item.type === "text") {
               return [
                 {
                   role: "user",
-                  parts: [createPartFromUri(item.image, "image/jpeg")],
+                  // i should save google uri in db
+                  parts: [
+                    createPartFromUri(
+                      "https://generativelanguage.googleapis.com/v1beta/files/0sybntngxaeq",
+                      "image/jpeg"
+                    ),
+                    { text: item.prompt },
+                  ],
+                },
+                {
+                  role: "model",
+                  parts: [{ text: item.response }],
                 },
               ];
-            } else {
+            } else if (item.type === "text") {
               return [
                 {
                   role: "user",
@@ -264,43 +277,46 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
                 },
               ];
             }
+            return null; // Return null for items that don't match
           })
+          .filter(Boolean) // Remove null entries
           .flat();
 
-        history.map((item) => console.log(item.type == "image" && item.image));
+        messages.forEach((item, idx) => {
+          if (!item || typeof item !== "object" || !item.role) {
+            console.log(`Message at index ${idx} is missing a role:`, item);
+          } else if (item.role === "user") {
+            console.log(`User message at index ${idx}:`, item);
+          } else if (item.role === "model") {
+            console.log(`Model message at index ${idx}:`, item);
+          } else {
+            console.log(`Unknown role at index ${idx}:`, item);
+          }
+        });
 
         let contents;
         if (image) {
-          if (messages && messages.length > 0) {
-          }
           contents = [
+            ...messages,
+            {
+              role: "user",
+              parts: [
+                createPartFromUri(myfile.uri, "image/jpeg"),
+                { text: prompt },
+              ],
+            },
+          ];
+        } else {
+          contents = [
+            ...messages,
             {
               role: "user",
               parts: [{ text: prompt }],
             },
-            {
-              role: "user",
-              parts: [createPartFromUri(myfile.uri, myfile.mimeType)],
-            },
           ];
-        } else {
-          if (messages && messages.length > 0) {
-            contents = [
-              ...messages,
-              {
-                role: "user",
-                parts: [{ text: prompt }],
-              },
-            ];
-          } else {
-            contents = [
-              {
-                role: "user",
-                parts: [{ text: prompt }],
-              },
-            ];
-          }
         }
+
+        // console.log("contents :", contents);
 
         const response = await genAI.models.generateContentStream({
           model,
@@ -313,7 +329,10 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
           fullResponse += chunk.text;
         }
 
-        return { response: { text: () => fullResponse } };
+        return {
+          response: { text: () => fullResponse },
+          image: image ? image : null,
+        };
       },
     };
   }
@@ -456,6 +475,7 @@ async function sendPromt(senderId, prompt, image) {
       senderId,
       prompt: prompt,
       response: aiResponse,
+      image: image ? image : null,
       type: "text",
     });
 
