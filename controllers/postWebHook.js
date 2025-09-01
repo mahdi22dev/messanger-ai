@@ -252,13 +252,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
                 {
                   role: "user",
                   // i should save google uri in db
-                  parts: [
-                    createPartFromUri(
-                      "https://generativelanguage.googleapis.com/v1beta/files/0sybntngxaeq",
-                      "image/jpeg"
-                    ),
-                    { text: item.prompt },
-                  ],
+                  parts: [createPartFromUri(item.image), { text: item.prompt }],
                 },
                 {
                   role: "model",
@@ -331,7 +325,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
 
         return {
           response: { text: () => fullResponse },
-          image: image ? image : null,
+          image: image ? myfile.uri : null,
         };
       },
     };
@@ -475,7 +469,7 @@ async function sendPromt(senderId, prompt, image) {
       senderId,
       prompt: prompt,
       response: aiResponse,
-      image: image ? image : null,
+      image: image ? (modelType == "gemini" ? response.image : image) : null,
       type: "text",
     });
 
