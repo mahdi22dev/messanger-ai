@@ -239,8 +239,8 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
             file: url,
             config: { mimeType: "image/jpeg" },
           });
+          // remove the file from the folder
           console.log(`my file data :${myfile.uri}`);
-          // delete files from the folder
         }
         const history = await getConversationHistory(senderId);
         // console.log("history : ", history);
