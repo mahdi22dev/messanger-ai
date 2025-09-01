@@ -241,6 +241,8 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
           });
           // remove the file from the folder
           console.log(`my file data :${myfile.uri}`);
+
+          fs.unlinkSync(url);
         }
         const history = await getConversationHistory(senderId);
         // console.log("history : ", history);
