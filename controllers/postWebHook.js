@@ -68,10 +68,14 @@ const formatForMessenger = (text) => {
 
 const handlePostRequest = async (req, res) => {
   const body = req.body;
+  console.log("=== Webhook Request Received ===");
+  console.log("Full body:", JSON.stringify(body, null, 2));
+
   if (body.object === "page") {
     body.entry.forEach(async (entry) => {
       const event = entry.messaging[0];
       const senderId = event.sender.id;
+      console.log("Received message from sender ID:", senderId);
 
       if (event.message && event.message.text) {
         const text = event.message.text.toLowerCase();
@@ -103,7 +107,7 @@ const handlePostRequest = async (req, res) => {
             sendPromt(
               senderId,
               receivedMessage,
-              stateExists.pending_action.parameters.imageUrl
+              stateExists.pending_action.parameters.imageUrl,
             );
             await clearPendingState(senderId);
           }
@@ -120,7 +124,7 @@ const handlePostRequest = async (req, res) => {
           if (text == "change model") {
             sendMessage(
               senderId,
-              "Model you want to change to? type one from this Models list: Together, DeepSeek, Gemini."
+              "Model you want to change to? type one from this Models list: Together, DeepSeek, Gemini, Gemini-3-pro.",
             );
             await setPendingState(senderId, "change", {});
 
@@ -146,7 +150,7 @@ const handlePostRequest = async (req, res) => {
               image: attachment.payload.url,
               type: "image",
             });
-            sendMessage(senderId, "send your promt for the image");
+            sendMessage(senderId, "send your prompt for the image");
           }
         });
       }
@@ -159,9 +163,17 @@ const handlePostRequest = async (req, res) => {
 };
 
 const sendMessage = async (recipientId, messageText) => {
+  console.log("Attempting to send message to recipient ID:", recipientId);
+
+  // Validate recipient ID
+  if (!recipientId || typeof recipientId !== "string") {
+    console.error("Invalid recipient ID:", recipientId);
+    return;
+  }
+
   // const AI_Response = await sendPromt(generationConfig, model, messageText);
   const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
-  const url = `https://graph.facebook.com/v12.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
+  const url = `https://graph.facebook.com/v22.0/me/messages?access_token=${PAGE_ACCESS_TOKEN}`;
   const response = formatForMessenger(messageText);
   // Split the response into chunks, each up to 2000 characters
   const chunkSize = 2000;
@@ -182,6 +194,13 @@ const sendMessage = async (recipientId, messageText) => {
       })
       .catch((error) => {
         console.error("Error sending message chunk:", error);
+        if (error.response) {
+          console.error("Facebook API Error Response:", {
+            status: error.response.status,
+            data: error.response.data,
+            headers: error.response.headers,
+          });
+        }
       });
   }
 };
@@ -214,7 +233,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
   if (type === "gemini") {
     return {
       chat: async (prompt) => {
-        const model = "gemini-2.5-flash";
+        const model = "gemini-3.1-flash-lite";
         const genAI = new GoogleGenAI({ apiKey: apiKey });
         const config = {
           responseMimeType: "text/plain",
@@ -409,7 +428,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
         console.log(
           messages.map((m) => {
             console.log(m);
-          })
+          }),
         );
         const response = await together.chat.completions.create({
           model: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
@@ -444,7 +463,7 @@ async function sendPromt(senderId, prompt, image) {
       aiResponse = response.choices[0].message.content;
       sendMessage(
         senderId,
-        `🧠 Model Type: ${modelType}\n\n📨 ${response.choices[0].message.content}`
+        `🧠 Model Type: ${modelType}\n\n📨 ${response.choices[0].message.content}`,
       );
     }
 
@@ -453,7 +472,7 @@ async function sendPromt(senderId, prompt, image) {
       aiResponse = response.response.text();
       sendMessage(
         senderId,
-        `🧠 Model Type: ${modelType}\n\n📨 ${response.response.text()}`
+        `🧠 Model Type: ${modelType}\n\n📨 ${response.response.text()}`,
       );
     }
 
@@ -462,7 +481,7 @@ async function sendPromt(senderId, prompt, image) {
       aiResponse = response.choices[0].message.content;
       sendMessage(
         senderId,
-        `🧠 Model Type: ${modelType}\n\n📨 ${response.choices[0].message.content}`
+        `🧠 Model Type: ${modelType}\n\n📨 ${response.choices[0].message.content}`,
       );
     }
 

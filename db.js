@@ -1,4 +1,14 @@
+const dns = require("dns");
 const { MongoClient, ServerApiVersion } = require("mongodb");
+
+// The local resolver (e.g. 127.0.0.1 from a VPN/DNS proxy) may refuse SRV
+// queries, which breaks mongodb+srv:// URIs. Use public DNS for SRV lookups.
+dns.setServers(
+  (process.env.MONGODB_DNS_SERVERS || "8.8.8.8,1.1.1.1")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+);
 
 // Configuration - should ideally come from environment variables
 const config = {

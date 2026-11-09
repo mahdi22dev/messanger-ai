@@ -1,0 +1,3 @@
+name = "messangerai-worker"
+main = "./worker/index.mjs"
+compatibility_date = "2026-05-23"

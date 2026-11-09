@@ -2,3 +2,8 @@ node_modules
 .vercel
 test.js
 .env
+secrets.json
+.DS_Store
+.idea
+.vscode
+*.log
