@@ -233,7 +233,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
   if (type === "gemini") {
     return {
       chat: async (prompt) => {
-        const model = "gemini-2.5-flash";
+        const model = "gemini-3.5-flash-lite";
         const genAI = new GoogleGenAI({ apiKey: apiKey });
         const config = {
           responseMimeType: "text/plain",
