@@ -233,7 +233,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
   if (type === "gemini") {
     return {
       chat: async (prompt) => {
-        const model = "gemini-3.1-flash-lite";
+        const model = "gemini-2.5-flash";
         const genAI = new GoogleGenAI({ apiKey: apiKey });
         const config = {
           responseMimeType: "text/plain",
@@ -245,9 +245,11 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
           tools: [
             { urlContext: {} },
             { codeExecution: {} },
-            {
-              googleSearch: {},
-            },
+            // Google Search grounding has its own quota and returns 429
+            // RESOURCE_EXHAUSTED on the free tier. Enable it explicitly.
+            ...(process.env.GEMINI_GOOGLE_SEARCH === "true"
+              ? [{ googleSearch: {} }]
+              : []),
           ],
         };
 
@@ -341,7 +343,7 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
 
         let fullResponse = "";
         for await (const chunk of response) {
-          fullResponse += chunk.text;
+          fullResponse += chunk.text ?? "";
         }
 
         return {
