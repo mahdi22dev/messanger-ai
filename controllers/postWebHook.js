@@ -11,6 +11,8 @@ const {
   updateModelType,
   clearPendingState,
 } = require("../db");
+const { spawn } = require("child_process");
+const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid");
@@ -19,7 +21,7 @@ const { createUserContent } = require("@google/genai");
 require("dotenv").config();
 
 const commands = ["reset", "change model", "cancel", "help"];
-const modelsList = ["deepseek", "gemini", "together"];
+const modelsList = ["deepseek", "gemini", "together", "opencode"];
 
 function getHelpMessage() {
   return `🤖 *AI Chat Bot Help* 🤖
@@ -49,6 +51,7 @@ function getHelpMessage() {
 - *Together*: Powerful general-purpose AI
 - *DeepSeek*: Specialized for technical topics
 - *Gemini*: Google's advanced AI model
+- *OpenCode*: Models served by OpenCode Console
 
 📝 *Notes*:
 - The bot remembers your conversation history
@@ -124,7 +127,7 @@ const handlePostRequest = async (req, res) => {
           if (text == "change model") {
             sendMessage(
               senderId,
-              "Model you want to change to? type one from this Models list: Together, DeepSeek, Gemini, Gemini-3-pro.",
+              "Model you want to change to? type one from this Models list: Together, DeepSeek, Gemini, OpenCode.",
             );
             await setPendingState(senderId, "change", {});
 
@@ -227,6 +230,103 @@ async function urlToFile(url) {
   fs.writeFileSync(filepath, buffer);
 
   return filepath; // Return the file path for further use
+}
+
+function resolveOpencodeBin() {
+  if (process.env.OPENCODE_BIN) return process.env.OPENCODE_BIN;
+  if (process.platform === "win32") {
+    const candidate = path.join(
+      path.dirname(process.execPath),
+      "node_modules",
+      "opencode-ai",
+      "bin",
+      "opencode.exe"
+    );
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return "opencode";
+}
+
+function runOpencodeCli(promptText) {
+  return new Promise((resolve, reject) => {
+    const bin = resolveOpencodeBin();
+    const dir =
+      process.env.OPENCODE_DIR ||
+      path.join(os.tmpdir(), "messanger-ai-opencode");
+    fs.mkdirSync(dir, { recursive: true });
+
+    const args = ["run", "--format", "json"];
+    if (process.env.OPENCODE_MODEL) {
+      args.push("--model", process.env.OPENCODE_MODEL);
+    }
+    if (process.env.OPENCODE_AGENT) {
+      args.push("--agent", process.env.OPENCODE_AGENT);
+    }
+    args.push("--dir", dir, promptText);
+
+    const child = spawn(bin, args, {
+      cwd: dir,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, NO_COLOR: "1" },
+      windowsHide: true,
+    });
+
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+
+    const timer = setTimeout(() => {
+      finish(() => {
+        child.kill();
+        reject(new Error("OpenCode CLI timed out"));
+      });
+    }, Number(process.env.OPENCODE_TIMEOUT_MS || 180000));
+
+    child.stdout.on("data", (chunk) => (stdout += chunk));
+    child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.on("error", (error) => finish(() => reject(error)));
+    child.on("close", (code) => {
+      finish(() => {
+        const texts = [];
+        for (const line of stdout.split(/\r?\n/)) {
+          if (!line.trim()) continue;
+          try {
+            const event = JSON.parse(line);
+            if (
+              event.type === "text" &&
+              event.part &&
+              event.part.type === "text" &&
+              event.part.text
+            ) {
+              texts.push(event.part.text);
+            }
+          } catch {
+            // ignore non-JSON output
+          }
+        }
+
+        const content = texts.join("").trim();
+        if (!content) {
+          return reject(
+            new Error(
+              `OpenCode CLI returned no text (exit ${code}): ${stderr.slice(
+                0,
+                300
+              )}`
+            )
+          );
+        }
+        resolve({ choices: [{ message: { content } }] });
+      });
+    });
+  });
 }
 
 const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
@@ -444,6 +544,29 @@ const createAIModel = (type, apiKey, hf, tg, senderId, image) => {
     };
   }
 
+  if (type === "opencode") {
+    return {
+      chat: async (prompt) => {
+        const history = await getConversationHistory(senderId);
+        const transcript = history
+          .map((item) => `User: ${item.prompt}\nAssistant: ${item.response}`)
+          .join("\n");
+
+        const instruction =
+          "You are chatting through Facebook Messenger. Reply in plain text only, no markdown and no code blocks. Be concise and friendly.";
+        const fullPrompt = [
+          instruction,
+          transcript ? `Conversation so far:\n${transcript}` : "",
+          `User: ${prompt}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+
+        return runOpencodeCli(fullPrompt);
+      },
+    };
+  }
+
   throw new Error("Invalid AI model type");
 };
 
@@ -487,6 +610,15 @@ async function sendPromt(senderId, prompt, image) {
       );
     }
 
+    if (modelType == "opencode") {
+      console.log(response.choices[0].message.content);
+      aiResponse = response.choices[0].message.content;
+      sendMessage(
+        senderId,
+        `🧠 Model Type: ${modelType}\n\n📨 ${response.choices[0].message.content}`,
+      );
+    }
+
     await insertUserContext({
       modelType,
       senderId,
@@ -508,4 +640,5 @@ async function sendPromt(senderId, prompt, image) {
 
 module.exports = {
   handlePostRequest: handlePostRequest,
+  runOpencodeCli: runOpencodeCli,
 };
